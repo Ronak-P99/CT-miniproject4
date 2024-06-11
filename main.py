@@ -6,27 +6,34 @@ from Book_operation import GenreOperation, Genre
 from connect_mysql import connect_database
 
 #MODULE 5 SQL Mini Project functions:
-def add_book_sql(name, isbn, pub_date, status):
-    #Establishing the connection
+def add_book_sql(name, author_name, genre_name, isbn, pub_date, status):
     conn = connect_database()
     if conn is not None:
         try:
             cursor = conn.cursor()
 
-            cursor.execute("SELECT LAST_INSERT_ID() FROM genres")
-            genre_id = cursor.fetchone()[0]
-            cursor.execute("SELECT LAST_INSERT_ID() FROM authors")
-            author_id = author_id = cursor.fetchone()[0]
-            
-            #SQL query  
-            query = "INSERT INTO books (title, author_id, genre_id, isbn, publication_date, availability) VALUES (%s, %s, %s, %s, %s, %s)"
-            
-            #Executing the query
-            cursor.execute(query, (name, author_id, genre_id, isbn, pub_date, status))
-        
-            conn.commit()
-            print("Book and session logged successfully.")
+            cursor.execute("SELECT id FROM authors WHERE name = %s", (author_name,))
+            author_id = cursor.fetchone()
+            if author_id is None:
+                raise ValueError("Author not found. Please add the author before adding the book.")
+            author_id = author_id[0]
 
+            # Find the genre_id for the given genre_name
+            cursor.execute("SELECT id FROM genres WHERE name = %s", (genre_name,))
+            genre_id = cursor.fetchone()
+            if genre_id is None:
+                print(genre_name)
+                raise ValueError("Genre not found. Please add the genre before adding the book.")
+            genre_id = genre_id[0]
+            
+            query = """
+            INSERT INTO books (title, author_id, genre_id, isbn, publication_date, availability)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (name, author_id, genre_id, isbn, pub_date, status))
+            
+            conn.commit()
+            print("Book added successfully.")
         except Exception as e:
             print(f"Error: {e}")
 
@@ -57,15 +64,24 @@ def add_user_sql(name, library_id,):
             cursor.close()
             conn.close()
 
-def add_borrowed_books_sql(borrow_date, return_date):
+def add_borrowed_books_sql(user_name, book_name, borrow_date, return_date):
     #Establishing the connection
     conn = connect_database()
     if conn is not None:
         try:
             cursor = conn.cursor()
 
-            user_id = cursor.lastrowid
-            book_id = cursor.lastrowid
+            cursor.execute("SELECT id FROM users WHERE name = %s", (user_name,))
+            user_id = cursor.fetchone()
+            if user_id is None:
+                raise ValueError("User not found. Please add the User Name first.")
+            user_id = user_id[0]
+
+            cursor.execute("SELECT id FROM books WHERE title = %s", (book_name,))
+            book_id = cursor.fetchone()
+            if book_id is None:
+                raise ValueError("Book not found. Please add the Book Name first.")
+            book_id = book_id[0]
             
             #SQL query  
             query = "INSERT INTO borrowed_books (user_id, book_id, borrow_date, return_date) VALUES (%s, %s, %s, %s)"
@@ -218,8 +234,9 @@ def main():
                             status = 'Available'
                             book_inst.add_book(Book(name, author, formatted_isbn, genre, formatted_date), status)
                             #SQL COMMAND
-                            add_book_sql(name, formatted_isbn, formatted_date, 1)
+                            add_book_sql(name, author, genre, formatted_isbn, formatted_date, 1)
                         elif action == 2:
+                            user_name = input("Enter the name of the user: ")
                             name = input("Enter book name to borrow: ")
                             date1 = input("Please enter the date the book was borrowed (Do not format!): ")
                             date2 = input("Please enter the date you would like to return the book (Do not format!): ")
@@ -238,10 +255,11 @@ def main():
                             book_inst.borrow_book(name)
                              #SQL COMMAND
                             updated_book_sql(name, 0)
-                            add_borrowed_books_sql(formatted_date1, formatted_date2)
+                            add_borrowed_books_sql(user_name, name, formatted_date1, formatted_date2)
                         elif action == 3:
                             name = input("Enter book name to return: ")
                             book_inst.return_book(name)
+                            #SQL COMMAND
                             updated_book_sql(name, 1)
                         elif action == 4:
                             name = input("Enter the name of the book you would like to search for: ")
@@ -342,7 +360,7 @@ def main():
                         if action not in [1, 2, 3, 4]:
                             raise ValueError("Invalid action.")
                         if action == 1:
-                            name = input("Please give the name of book for the genre: ")
+                            name = input("Please give the name of the genre out of this list: 'HORROR', 'THRILLER', 'COMEDY', 'FANTASY', 'ACTION', 'DRAMA': ")
                             if all([letter.isalpha() or letter.isspace() for letter in name]):
                                 pass
                             else:
@@ -352,9 +370,9 @@ def main():
                             if len(genre_description) >= 101:
                                 print("Please make sure the description is less than 100 characters!")
                                 break
-                            categories = ['HORROR', 'THRILLER', 'COMEDY', 'FANTASY', 'ACTION', 'DRAMA']
-                            category = input("Choose the category out of this list: Horror, Thriller, Comedy, Fantasy, Action, Drama: ")
-                            if category.upper() in categories: 
+                            categories = ['HORROR', 'THRILLER', 'COMEDY', 'FANTASY', 'ACTION', 'DRAMA, NONFICTION, FICTION']
+                            category = input("Choose the category out of this list: Nonfiction or Fiction: ")
+                            if name.upper() in categories and category.upper in categories: 
                                 genre_inst.add_genre(Genre(name, genre_description, category))
                                 #SQL COMMAND
                                 add_genre_sql(name, genre_description, category)
