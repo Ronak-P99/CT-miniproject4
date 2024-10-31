@@ -7,7 +7,7 @@ def connect_database():
     db_name = "e_commerce_db"
     user = "root"
     #Add your password
-    password = "Mario101299"
+    password = ""
     host = "localhost"
 
     try:
